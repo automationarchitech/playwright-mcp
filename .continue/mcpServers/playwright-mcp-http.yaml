@@ -1,0 +1,9 @@
+name: Playwright mcpServer HTTP
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: Browser search HTTP
+    command: /Users/dougp/.nvm/versions/node/v24.4.1/bin/node
+    args:
+      - "/Users/dougp/Documents/GitHub/playwright-mcp/cli.js"
+    url: "http://localhost:8080/mcp"
