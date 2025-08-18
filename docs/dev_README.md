@@ -37,3 +37,24 @@ If you want to dynamically reload, then run these simultaneously in seperate ter
 ## 3. Insepct Local Build
 
 `npx -y @modelcontextprotocol/inspector node /path/to/playwright-mcp/cli.js`
+
+
+## 4. Running a Profile
+
+Continue Config? 
+```
+name: Playwright mcpServer HTTP
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: Browser search HTTP
+    command: /Users/dougp/.nvm/versions/node/v24.4.1/bin/node
+    args:
+      - "/Users/dougp/Documents/GitHub/playwright-mcp/cli.js"
+      - "--user-data-dir"
+      - "/Users/dougp/Library/Application Support/Google/Chrome"
+    url: "http://localhost:8080/mcp"
+```
+
+Server Command?
+`node cli.js --port 8080 --user-data-dir "/Users/dougp/Library/Application Support/Google/Chrome"`
