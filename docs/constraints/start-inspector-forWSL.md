@@ -1,0 +1,1 @@
+File labled start-inspector-forWSL.sh is for proper network loopback when communicating from WSL to a windows run browser.  Run this if doing things like using the MCP inspector which require WSL/WIN cross platform network communication.
