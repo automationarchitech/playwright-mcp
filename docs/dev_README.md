@@ -36,7 +36,7 @@ If you want to dynamically reload, then run these simultaneously in seperate ter
 
 ## 3. Insepct Local Build
 
-`npx -y @modelcontextprotocol/inspector node /path/to/playwright-mcp/cli.js`
+`npx -y @modelcontextprotocol/inspector node cli.js`
 
 
 ## 4. Running a Profile
