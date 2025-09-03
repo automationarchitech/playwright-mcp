@@ -14,32 +14,61 @@
  * limitations under the License.
  */
 
+import assert from 'assert';
+import net from 'net';
 import http from 'http';
 import crypto from 'crypto';
+
 import debug from 'debug';
 
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { httpAddressToString, startHttpServer } from '../utils/httpServer.js';
 import * as mcpServer from './server.js';
 
 import type { ServerBackendFactory } from './server.js';
 
-export async function start(serverBackendFactory: ServerBackendFactory, options: { host?: string; port?: number }) {
-  if (options.port !== undefined) {
-    const httpServer = await startHttpServer(options);
-    startHttpTransport(httpServer, serverBackendFactory);
-  } else {
-    await startStdioTransport(serverBackendFactory);
-  }
-}
-
-async function startStdioTransport(serverBackendFactory: ServerBackendFactory) {
-  await mcpServer.connect(serverBackendFactory, new StdioServerTransport(), false);
-}
-
 const testDebug = debug('pw:mcp:test');
+
+export async function startHttpServer(config: { host?: string, port?: number }, abortSignal?: AbortSignal): Promise<http.Server> {
+  const { host, port } = config;
+  const httpServer = http.createServer();
+  decorateServer(httpServer);
+  await new Promise<void>((resolve, reject) => {
+    httpServer.on('error', reject);
+    abortSignal?.addEventListener('abort', () => {
+      httpServer.close();
+      reject(new Error('Aborted'));
+    });
+    httpServer.listen(port, host, () => {
+      resolve();
+      httpServer.removeListener('error', reject);
+    });
+  });
+  return httpServer;
+}
+
+export function httpAddressToString(address: string | net.AddressInfo | null): string {
+  assert(address, 'Could not bind server socket');
+  if (typeof address === 'string')
+    return address;
+  const resolvedPort = address.port;
+  let resolvedHost = address.family === 'IPv4' ? address.address : `[${address.address}]`;
+  if (resolvedHost === '0.0.0.0' || resolvedHost === '[::]')
+    resolvedHost = 'localhost';
+  return `http://${resolvedHost}:${resolvedPort}`;
+}
+
+export async function installHttpTransport(httpServer: http.Server, serverBackendFactory: ServerBackendFactory) {
+  const sseSessions = new Map();
+  const streamableSessions = new Map();
+  httpServer.on('request', async (req, res) => {
+    const url = new URL(`http://localhost${req.url}`);
+    if (url.pathname.startsWith('/sse'))
+      await handleSSE(serverBackendFactory, req, res, url, sseSessions);
+    else
+      await handleStreamable(serverBackendFactory, req, res, streamableSessions);
+  });
+}
 
 async function handleSSE(serverBackendFactory: ServerBackendFactory, req: http.IncomingMessage, res: http.ServerResponse, url: URL, sessions: Map<string, SSEServerTransport>) {
   if (req.method === 'POST') {
@@ -109,29 +138,18 @@ async function handleStreamable(serverBackendFactory: ServerBackendFactory, req:
   res.end('Invalid request');
 }
 
-function startHttpTransport(httpServer: http.Server, serverBackendFactory: ServerBackendFactory) {
-  const sseSessions = new Map();
-  const streamableSessions = new Map();
-  httpServer.on('request', async (req, res) => {
-    const url = new URL(`http://localhost${req.url}`);
-    if (url.pathname.startsWith('/sse'))
-      await handleSSE(serverBackendFactory, req, res, url, sseSessions);
-    else
-      await handleStreamable(serverBackendFactory, req, res, streamableSessions);
+function decorateServer(server: net.Server) {
+  const sockets = new Set<net.Socket>();
+  server.on('connection', socket => {
+    sockets.add(socket);
+    socket.once('close', () => sockets.delete(socket));
   });
-  const url = httpAddressToString(httpServer.address());
-  const message = [
-    `Listening on ${url}`,
-    'Put this in your client config:',
-    JSON.stringify({
-      'mcpServers': {
-        'playwright': {
-          'url': `${url}/mcp`
-        }
-      }
-    }, undefined, 2),
-    'For legacy SSE transport support, you can use the /sse endpoint instead.',
-  ].join('\n');
-    // eslint-disable-next-line no-console
-  console.error(message);
+
+  const close = server.close;
+  server.close = (callback?: (err?: Error) => void) => {
+    for (const socket of sockets)
+      socket.destroy();
+    sockets.clear();
+    return close.call(server, callback);
+  };
 }

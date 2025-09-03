@@ -14,12 +14,29 @@
  * limitations under the License.
  */
 
-import crypto from 'crypto';
+// Whenever the commands/events change, the version must be updated. The latest
+// extension version should be compatible with the old MCP clients.
+export const VERSION = 1;
 
-export function createGuid(): string {
-  return crypto.randomBytes(16).toString('hex');
-}
+export type ExtensionCommand = {
+  'attachToTab': {
+    params: {};
+  };
+  'forwardCDPCommand': {
+    params: {
+      method: string,
+      sessionId?: string
+      params?: any,
+    };
+  };
+};
 
-export function createHash(data: string): string {
-  return crypto.createHash('sha256').update(data).digest('hex').slice(0, 7);
-}
+export type ExtensionEvents = {
+  'forwardCDPEvent': {
+    params: {
+      method: string,
+      sessionId?: string
+      params?: any,
+    };
+  };
+};
