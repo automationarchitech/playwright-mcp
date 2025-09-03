@@ -21,8 +21,9 @@
 import fs from 'fs';
 import ts from 'typescript';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const depsCache = {};
 const packageRoot = path.resolve(__dirname, '..');
