@@ -10,5 +10,4 @@ playwright-report/
 sessions/
 
 # Large files exceeding GitHub's file size limit
-Chromium/chrome.dll
-Chromium/interactive_ui_tests.exe
+Chromium/
